@@ -1,0 +1,12 @@
+{
+  "object_store": "s3://llama-bucket-dev/obj/",
+  "aws_region": "us-west-2",
+  "ecr_repository": "335046115924.dkr.ecr.us-west-2.amazonaws.com/llama",
+  "iam_role": "arn:aws:iam::335046115924:role/llama-execute-role",
+  "cloud_watch": "/llama",
+  "okta_user": "msteele",
+  "profile": "llama",
+  "expiry": "",
+  "s3_concurrency": 8,
+  "honeycomb": {}
+}
