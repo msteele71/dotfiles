@@ -1,0 +1,36 @@
+##
+# init.sh demo using chezmoi templating
+##
+
+# install a demo package 
+
+{{ if eq .chezmoi.os "darwin" }}
+# darwin
+
+{{ else if (and (eq .chezmoi.os "linux") (eq .chezmoi.osRelease.id "rhel") }}
+# linux redhat
+
+echo Installing a few RedHat diversions
+
+sudo dnf install -y \
+    figlet \
+    myman
+
+{{ else if (and (eq .chezmoi.os "linux") (eq .chezmoi.osRelease.id "ubuntu") }}
+# linux ubuntu
+
+echo Installing some Ubuntu goodies
+
+sudo apt-get install -y \
+    figlet \
+    bastet
+
+{{ else }}
+# other operating system
+
+echo
+echo "unknown operation system {{ .chezmoi.os }} {{ .chezmoi.osRelease.id }}"
+echo
+
+{ end }}
+
