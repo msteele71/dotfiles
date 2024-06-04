@@ -13,8 +13,7 @@
 echo Installing a few RedHat diversions
 
 sudo dnf install -y \
-    figlet \
-    myman
+    figlet 
 
 {{ else if (and (eq .chezmoi.os "linux") (eq .chezmoi.osRelease.id "ubuntu")) }}
 # linux ubuntu
