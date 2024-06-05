@@ -1,0 +1,12 @@
+{
+  "LLAMACC_LOCAL_CXX": "/usr/bin/clang++",
+  "LLAMACC_LOCAL_CC": "/usr/bin/clang",
+  "LLAMACC_BACKEND": "",
+  "LLAMACC_BACKEND_IMAGE": "",
+  "LLAMACC_REMOTE_LAMBDA": "clang-14-2204",
+  {{ if (and (eq .chezmoi.arch "amd64") (eq .chezmoi.osRelease.id "ubuntu") (eq .chezmoi.osRelease.versionId "22.04")) -}}
+  "LLAMACC_REMOTE_LAMBDA": "clang-14-2204",
+  {{ else if (and (eq .chezmoi.arch "amd64") (eq .chezmoi.osRelease.id "ubuntu") (eq .chezmoi.osRelease.versionId "24.04")) -}}
+  "LLAMACC_REMOTE_LAMBDA": "clang-18-2404",
+  "LLAMACC_CONFIGURE_ID": ""
+}
