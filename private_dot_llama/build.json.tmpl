@@ -8,5 +8,6 @@
   "LLAMACC_REMOTE_LAMBDA": "clang-14-2204",
   {{ else if (and (eq .chezmoi.arch "amd64") (eq .chezmoi.osRelease.id "ubuntu") (eq .chezmoi.osRelease.versionId "24.04")) -}}
   "LLAMACC_REMOTE_LAMBDA": "clang-18-2404",
+  {{- end }}
   "LLAMACC_CONFIGURE_ID": ""
 }
