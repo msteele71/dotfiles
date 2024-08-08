@@ -24,4 +24,4 @@ if [ -f "$HOME/.vworkstation/metadata.json" ]; then
 fi
 
 echo "Applying dofiles with chezmoi"
-chezmoi apply -v
+chezmoi apply
