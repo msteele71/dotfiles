@@ -139,3 +139,5 @@ function pydelete {
   echo "deleting venv: ${1}"
   rm -rf $VENV_WORKING_DIR/$1
 }
+
+source $HOME/.splcore-build-vars

@@ -1,0 +1,23 @@
+#!/bin/bash
+
+DEFAULT_DIR=~/.vworkstation/defaults
+
+# .gitconfig
+if [[ ! -f "~/.gitconfig" ]]; then
+    cp $DEFAULT_DIR/.gitconfig ~/.gitconfig
+fi
+
+if [[ ! -f "~/.llama/build.json" ]]; then
+    mkdir -p ~/.llama
+    cp $DEFAULT_DIR/llama/build.json ~/.llama/build.json
+fi
+if [[ ! -f "~/.llama/llama.json" ]]; then
+    mkdir -p ~/.llama
+    cp $DEFAULT_DIR/llama/llama.json ~/.llama/llama.json
+fi
+
+# would be good to have a test if tmux is being used
+# but for now, just place the default files
+if [[ -f "~/.tmux.conf" ]]; then
+    cp $DEFAULT_DIR/tmux/.tmux.conf ~/.tmux.conf
+fi
