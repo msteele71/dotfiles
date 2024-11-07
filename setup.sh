@@ -17,10 +17,10 @@ jq --arg source $CODER_DOTFILES \
     $CHEZMOI_CONFIG > /tmp/chezmoi.config && mv /tmp/chezmoi.config $CHEZMOI_CONFIG
 
 # next link the metadata.json so that chezmoi can read it
-if [ -f "$HOME/.vworkstation/metadata.json" ]; then
+if [ -f "$HOME/.vworkstation/metadata.json" ] && [ ! -f "$CODER_DOTFILES/.chezmoidata/vworkstation.json" ]; then
     # ensure the data dir exists
     mkdir -p $CODER_DOTFILES/.chezmoidata
-    ln -s $HOME/.vworkstation//metadata.json $CODER_DOTFILES/.chezmoidata/vworkstation.json
+    ln -s $HOME/.vworkstation/metadata.json $CODER_DOTFILES/.chezmoidata/vworkstation.json
 fi
 
 echo "Applying dofiles with chezmoi"
