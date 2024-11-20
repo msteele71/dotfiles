@@ -1,5 +1,11 @@
 #! /usr/bin/env bash
 
+##
+# This setup file serves two main purposes
+# 1. Perform any FTR setup to prepare for actually applying dotfiles
+# 2. Applying/Running the dotfiles setup, in this case using chezmoi
+##
+
 CODER_DOTFILES=$HOME/.config/coderv2/dotfiles
 CHEZMOI_CONFIG=$HOME/.config/chezmoi/chezmoi.json
 
@@ -23,5 +29,5 @@ if [ -f "$HOME/.vworkstation/metadata.json" ] && [ ! -f "$CODER_DOTFILES/.chezmo
     ln -s $HOME/.vworkstation/metadata.json $CODER_DOTFILES/.chezmoidata/vworkstation.json
 fi
 
-echo "Applying dofiles with chezmoi"
+echo "Applying dotfiles with chezmoi"
 chezmoi apply

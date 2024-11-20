@@ -1,0 +1,56 @@
+#! /bin/bash
+
+###
+#
+#  This file is used by the vWorkstation setup to perform or bootstrap
+#  custom user activities such as installing non-standard tools or running
+#  configurations -- it will be executed every time the root of the system
+#  is refreshed (see executable_init.sh.tmpl for HOME-oriented init).
+#
+###
+
+# verify only run once on this instance
+runstate_dir="/var/lib/vworkstation/runstate"
+check=init_root
+
+if [[ -f "${runstate_dir}/${check}.done" ]]; then
+  echo "${check}.sh already run, remove ${runstate_dir}/${check}.done file to allow rerun"
+  exit 0
+fi
+
+sudo mkdir -p $runstate_dir
+sudo touch "${runstate_dir}/${check}.done"
+
+
+##
+#  user customizations
+##
+
+# install a demo package
+
+{{ if eq .chezmoi.os "darwin" }}
+# darwin
+
+{{ else if (and (eq .chezmoi.os "linux") (eq .chezmoi.osRelease.id "rhel")) }}
+# linux redhat
+
+echo Installing a few RedHat diversions
+
+sudo dnf install -y figlet
+
+{{ else if (and (eq .chezmoi.os "linux") (eq .chezmoi.osRelease.id "ubuntu")) }}
+# linux ubuntu
+
+echo Installing some Ubuntu goodies
+export DEBIAN_FRONTEND=noninteractive
+# install optional packages here
+# sudo apt-get install -y figlet
+
+{{ else }}
+# other operating system
+
+echo
+echo "unknown operation system {{ .chezmoi.os }} {{ .chezmoi.osRelease.id }}"
+echo
+
+{{ end }}

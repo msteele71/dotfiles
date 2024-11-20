@@ -1,0 +1,41 @@
+#! /bin/bash
+###
+#
+#  This file is used by the vWorkstation setup to perform or bootstrap
+#  custom user activities such as application configurations or installing
+#  tools or plugins into your $HOME dir.
+#  -- It will only be executed the first time the user's HOME
+#  directory is set up (see executable_init_root.sh.tmpl for root directory-
+#  oriented init).  This occurs whenever a NEW workspace is created from a
+#  template
+#
+###
+
+# verify only run once on this instance $HOME dir
+runstate_dir="${HOME}/.vworkstation/runstate"
+check=init
+
+if [[ -f "${runstate_dir}/${check}.done" ]]; then
+  echo "${check}.sh already run, remove ${runstate_dir}/${check}.done file to allow rerun"
+  exit 0
+fi
+
+# vWorkstation specific $HOME init
+# (user specific see below)
+# ----------------------------------
+
+if [[ ! -d ~/.orca ]]; then
+  # init orca:
+  echo "setting up for orca"
+  orca config --answer-yes --username $USER
+fi
+
+# Add User specific $HOME init below
+# making sure the run is idempotent (or at least non-breaking)
+# --------------------------------------------
+
+TMUX_PLUGIN_DIR=$XDG_CONFIG_HOME/tmux/plugins
+mkdir -p $TMUX_PLUGIN_DIR
+git clone https://github.com/tmux-plugins/tmux-resurrect $TMUX_PLUGIN_DIR/tmux-resurrect
+git clone https://github.com/tmux-plugins/tmux-continuum $TMUX_PLUGIN_DIR/tmux-continuum
+git clone -b v2.1.1 https://github.com/catppuccin/tmux.git $TMUX_PLUGIN_DIR/catppuccin
