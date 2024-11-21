@@ -34,6 +34,10 @@ fi
 # making sure the run is idempotent (or at least non-breaking)
 # --------------------------------------------
 
+# XDG_CONFIG_HOME may not be set yet so set it now jic
+XDG_CONFIG_HOME=$HOME/.config
+
+# install tmux plugins
 TMUX_PLUGIN_DIR=$XDG_CONFIG_HOME/tmux/plugins
 mkdir -p $TMUX_PLUGIN_DIR
 git clone https://github.com/tmux-plugins/tmux-resurrect $TMUX_PLUGIN_DIR/tmux-resurrect

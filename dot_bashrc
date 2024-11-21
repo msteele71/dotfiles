@@ -141,3 +141,4 @@ function pydelete {
 }
 
 source $HOME/.splcore-build-vars
+export XDG_CONFIG_HOME=$HOME/.config
