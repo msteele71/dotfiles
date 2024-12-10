@@ -1,0 +1,8 @@
+[user]
+	email = msteele@splunk.com
+	name = Michael Steele
+{{ if eq .chezmoi.os "windows" }}
+[core]
+	longpaths = true
+	autocrlf = true
+{{ end }}

@@ -1,0 +1,30 @@
+##
+#  This will keep from writing Windows files on Linux and vice versa
+##
+
+{{ if eq .chezmoi.os "linux" }}
+.local/share/oh-my-zsh/cache/**
+.local/share/oh-my-zsh/custom/themes/powerlevel10k/**/*.zwc
+{{ end }}
+
+{{ if eq .chezmoi.os "windows" }}
+.config
+{{ end }}
+
+{{ if ne .chezmoi.os "linux" }}
+**/*.sh
+.local/share/bash-completion/**
+.gnupg
+.bash_history
+.bashrc
+.profile
+.zshenv
+.hushlogin
+{{ end }}
+
+{{ if ne .chezmoi.os "windows" }}
+**/*.bat
+**/*.ps1
+.gitconfig
+Documents
+{{ end }}

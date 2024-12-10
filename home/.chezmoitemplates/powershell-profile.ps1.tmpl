@@ -1,0 +1,32 @@
+function win-login-artifactory {
+	Invoke-Expression -Command (okta-artifactory-login -t generic -t pypi -t go --use-browser=false --eval)
+}
+
+$env:HOME_VOLUME = $null
+if (Test-Path "F:\Users\$env:UserName") {
+	$env:HOME_VOLUME = "F:"
+} elseif (Test-Path "D:\Users\$env:UserName") {
+	$env:HOME_VOLUME = "D:"
+} else {
+	throw [System.Exception]::new("Could not locate home volume (D:\ or F:\)")
+}
+
+$env:BROOT = "${env:HOME_VOLUME}\Users\$env:UserName\broot"
+$env:SPLUNK_HOME = "${env:HOME_VOLUME}\Users\$env:UserName\splunk_home"
+$env:SPLUNK_SOURCE = "${env:HOME_VOLUME}\Users\$env:UserName\splunk_source"
+$env:SPLUNK_PACKAGE = "${env:HOME_VOLUME}\Users\$env:UserName\splunk_package"
+
+if (-not (Test-Path -Path "C:\tmp")) {
+    mkdir "C:\tmp" > $null
+}
+if (-not (Test-Path -Path $env:BROOT)) {
+    mkdir $env:BROOT
+}
+if (-not (Test-Path -Path $env:SPLUNK_HOME)) {
+    mkdir $env:SPLUNK_HOME
+}
+if (-not (Test-Path -Path $env:SPLUNK_PACKAGE)) {
+    mkdir $env:SPLUNK_PACKAGE
+}
+
+cd ${env:HOME_VOLUME}\Users\$env:UserName
