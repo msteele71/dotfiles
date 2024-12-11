@@ -1,7 +1,7 @@
 $env:HOME_VOLUME = $null
-if (Test-Path "F:\Users\${env:UserName}") {
+if (Test-Path "F:\") {
 	$env:HOME_VOLUME = "F:"
-} elseif (Test-Path "D:\Users\${env:UserName}") {
+} elseif (Test-Path "D:\") {
 	$env:HOME_VOLUME = "D:"
 } else {
 	throw [System.Exception]::new("Could not locate home volume (D:\ or F:\)")
@@ -15,8 +15,8 @@ Write-Host "Target ssh directory: ${targetPath}" -ForegroundColor Blue
 
 # Check if the target directory exists
 if (-not (Test-Path -Path $targetPath)) {
-    Write-Host "Target directory does not exist: $targetPath" -ForegroundColor Red
-    exit 1
+    Write-Host " - creating: $targetPath" -ForegroundColor Yellow
+    mkdir $targetPath > $null
 }
 
 # Check if the symlink exists

@@ -3,9 +3,9 @@ function win-login-artifactory {
 }
 
 $env:HOME_VOLUME = $null
-if (Test-Path "F:\Users\$env:UserName") {
+if (Test-Path "F:\") {
 	$env:HOME_VOLUME = "F:"
-} elseif (Test-Path "D:\Users\$env:UserName") {
+} elseif (Test-Path "D:\") {
 	$env:HOME_VOLUME = "D:"
 } else {
 	throw [System.Exception]::new("Could not locate home volume (D:\ or F:\)")
