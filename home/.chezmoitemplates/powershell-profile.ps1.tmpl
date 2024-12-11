@@ -1,6 +1,6 @@
-function win-login-artifactory {
-	Invoke-Expression -Command (okta-artifactory-login -t generic -t pypi -t go --use-browser=false --eval)
-}
+##
+# Set $env vars first
+##
 
 $env:HOME_VOLUME = $null
 if (Test-Path "F:\") {
@@ -11,11 +11,70 @@ if (Test-Path "F:\") {
 	throw [System.Exception]::new("Could not locate home volume (D:\ or F:\)")
 }
 
+$env:VENV_WORKING_DIR = "${env:HOME_VOLUME}\venv"
+
 $env:BROOT = "${env:HOME_VOLUME}\Users\$env:UserName\broot"
 $env:SPLUNK_HOME = "${env:HOME_VOLUME}\Users\$env:UserName\splunk_home"
 $env:SPLUNK_SOURCE = "${env:HOME_VOLUME}\Users\$env:UserName\splunk_source"
 $env:SPLUNK_PACKAGE = "${env:HOME_VOLUME}\Users\$env:UserName\splunk_package"
 
+$env:AWS_PS_CREDS_FILE = "C:\Users\${env:UserName}\.aws\credentials.ps1"
+
+if (Test-Path "${env:AWS_PS_CREDS_FILE}") {
+	. "${env:AWS_PS_CREDS_FILE}"
+}
+
+##
+# Create all functions and wrappers
+##
+
+function win-okta-artifactory-login {
+	Invoke-Expression -Command (okta-artifactory-login -t generic -t pypi -t go --use-browser=false --eval)
+}
+function win-okta-aws-login {
+	$aws_cred_dir = Split-Path -Path $env:AWS_PS_CREDS_FILE
+	if (-not (Test-Path $aws_cred_dir)) {
+		mkdir -p $aws_cred_dir
+	}
+	okta-aws-login --use-browser=false > $env:AWS_PS_CREDS_FILE
+}
+
+
+function pyswitch {
+	param (
+		[string]$venv_name
+	)
+	. "${env:VENV_WORKING_DIR}\${venv_name}\Scripts\Activate.ps1"
+}
+
+function pylist {
+	Write-Host "Available py3 virtual environments ..." -ForegroundColor Blue
+	Get-ChildItem -Path "${env:VENV_WORKING_DIR}" -Directory -Name
+}
+
+function pymake {
+	param (
+		[string]$venv_name
+	)
+	if (-not (Test-Path "${env:VENV_WORKING_DIR}")) {
+		mkdir -p "${env:VENV_WORKING_DIR}"
+	}
+	Write-Host "creating venv: ${venv_name}" -ForegroundColor Green
+	python -m venv "${env:VENV_WORKING_DIR}\${venv_name}"
+	pyswitch $venv_name
+}
+
+function pydelete {
+	param (
+		[string]$venv_name
+	)
+	echo "deleting venv: ${1}"
+	rmdir /s /q "${env:VENV_WORKING_DIR}\${venv_name}"
+}
+
+##
+# Ensure any build directories are present
+##
 if (-not (Test-Path -Path "C:\tmp")) {
     mkdir "C:\tmp" > $null
 }
@@ -29,4 +88,7 @@ if (-not (Test-Path -Path $env:SPLUNK_PACKAGE)) {
     mkdir $env:SPLUNK_PACKAGE
 }
 
+##
+# cd to the "active" working location
+##
 cd ${env:HOME_VOLUME}\Users\$env:UserName
