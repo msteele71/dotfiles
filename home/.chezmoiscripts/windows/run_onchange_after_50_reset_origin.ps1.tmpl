@@ -1,0 +1,30 @@
+# Until the http gitlab authentication integration
+# works for the logged in user, the origin needs
+# to be switched back to git from https
+
+Set-Location -Path "{{ .chezmoi.workingTree }}"
+
+$originUrl = git remote get-url origin
+
+if ($originUrl -like "git*") {
+	Write-Host "origin already using git"
+	exit 0
+}
+
+try {
+	$uri = [System.Uri]::new($originUrl)
+
+	if ($uri.Scheme -eq "http" -or $uri.Scheme -eq "https") {
+		if ($uri.Scheme -eq "http") {
+			$newOriginUrl = "git://" + $uri.Host + $uri.AbsolutePath
+		} else {
+			$newOriginUrl = "git@" + $uri.Host + ":" + $uri.AbsolutePath.TrimStart("/")
+		}
+
+		git remote set-url origin $newOriginUrl
+
+		Write-Host "origin updated to: $newOriginUrl"
+	}		
+} catch {
+	Write-Host "Invalid URL: $originUrl"
+}

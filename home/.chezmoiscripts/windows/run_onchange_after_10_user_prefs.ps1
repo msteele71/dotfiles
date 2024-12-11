@@ -53,8 +53,16 @@ Update-ItemProperty -Description "Search: Bing search disabled" `
     -Name "BingSearchEnabled" -Value 0
 
 Update-ItemProperty -Description "Theme: Set Accent Color" `
+	-Path "HKCU:\Software\Microsoft\Windows\DWM" `
+	-Name "AccentColor" -Value 0xff9a7d2d
+
+Update-ItemProperty -Description "Theme: Set Accent Color Menu" `
 	-Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize" `
-	-Name "AccentColor" -Value 0xFF1387AE
+	-Name "AccentColorMenu" -Value 0xFF1387AE
+
+Update-ItemProperty -Description "Theme: Set Accent Palette" `
+	-Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize" `
+	-Name "AccentPalette" -Value 0xFF1387AE
 
 Update-ItemProperty -Description "Theme: Set Color Prevalence" `
 	-Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize" `
