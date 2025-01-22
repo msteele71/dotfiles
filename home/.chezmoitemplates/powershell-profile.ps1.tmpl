@@ -37,6 +37,7 @@ function win-okta-aws-login {
 		mkdir -p $aws_cred_dir
 	}
 	okta-aws-login --use-browser=false > $env:AWS_PS_CREDS_FILE
+    . $env:AWS_PS_CREDS_FILE
 }
 
 

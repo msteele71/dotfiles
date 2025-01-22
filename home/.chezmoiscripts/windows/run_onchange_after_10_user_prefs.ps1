@@ -77,3 +77,21 @@ Update-ItemProperty -Description "Theme: Set System Dark Mode" `
 	-Name "SystemUsesLightTheme" -Value 0x00000000
 
 Write-Output "Completed configuration of Windows user preferences"
+
+$env:HOME_VOLUME = $null
+if (Test-Path "F:\") {
+	$env:HOME_VOLUME = "F:"
+} elseif (Test-Path "D:\") {
+	$env:HOME_VOLUME = "D:"
+} else {
+	throw [System.Exception]::new("Could not locate home volume (D:\ or F:\)")
+}
+
+$userPersistentHome = "${env:HOME_VOLUME}\Users\${env:UserName}"
+
+if (-not (Test-Path -Path $userPersistentHome -PathType Container)) {
+    New-Item -Path $userPersistentHome -ItemType Directory -Force | Out-Null
+    Write-Host "Directory created: $userPersistentHome"
+} else {
+    Write-Host "Directory already exists: $userPersistentHome"
+}

@@ -7,6 +7,15 @@ if (Test-Path "F:\") {
 	throw [System.Exception]::new("Could not locate home volume (D:\ or F:\)")
 }
 
+function Is-RealDirectory {
+    param (
+        [string]$Path
+    )
+    $attributes = (Get-Item -Path $Path -ErrorAction SilentlyContinue).Attributes
+    return $attributes -band [System.IO.FileAttributes]::Directory -and `
+        -not ($attributes -band [System.IO.FileAttributes]::ReparsePoint)
+}
+
 # Define paths
 $symlinkPath = "C:\Users\${env:UserName}\.ssh"
 $targetPath = "${env:HOME_VOLUME}\Users\${env:UserName}\.ssh"
@@ -17,6 +26,22 @@ Write-Host "Target ssh directory: ${targetPath}" -ForegroundColor Blue
 if (-not (Test-Path -Path $targetPath)) {
     Write-Host " - creating: $targetPath" -ForegroundColor Yellow
     mkdir $targetPath > $null
+}
+
+# Check if the symlinkPath is actually a real directory
+if (Test-Path -Path $symlinkPath -PathType Container -ErrorAction SilentlyContinue) {
+    if (Is-RealDirectory -Path $symlinkPath) {
+        # Ensure the destination directory doesn't already exist
+        if (-not (Test-Path -Path $targetPath -ErrorAction SilentlyContinue)) {
+            # Move the directory
+            Move-Item -Path $symlinkPath -Destination $targetPath -Force
+            Write-Host "Directory moved successfully to $targetPath."
+        } else {
+            Write-Host "Destination path already exists: $targetPath."
+        }
+    }
+} else {
+    Write-Host "Source directory does not exist: $symlinkPath."
 }
 
 # Check if the symlink exists
