@@ -22,12 +22,6 @@ $targetPath = "${env:HOME_VOLUME}\Users\${env:UserName}\.ssh"
 
 Write-Host "Target ssh directory: ${targetPath}" -ForegroundColor Blue
 
-# Check if the target directory exists
-if (-not (Test-Path -Path $targetPath)) {
-    Write-Host " - creating: $targetPath" -ForegroundColor Yellow
-    mkdir $targetPath > $null
-}
-
 # Check if the symlinkPath is actually a real directory
 if (Test-Path -Path $symlinkPath -PathType Container -ErrorAction SilentlyContinue) {
     if (Is-RealDirectory -Path $symlinkPath) {
@@ -42,6 +36,12 @@ if (Test-Path -Path $symlinkPath -PathType Container -ErrorAction SilentlyContin
     }
 } else {
     Write-Host "Source directory does not exist: $symlinkPath."
+}
+
+# Check if the target directory exists
+if (-not (Test-Path -Path $targetPath)) {
+    Write-Host " - creating: $targetPath" -ForegroundColor Yellow
+    mkdir $targetPath > $null
 }
 
 # Check if the symlink exists
