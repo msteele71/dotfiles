@@ -1,0 +1,32 @@
+##
+#  user customizations
+##
+
+# install a demo package
+
+{{ if eq .chezmoi.os "darwin" }}
+# darwin
+
+{{ else if (and (eq .chezmoi.os "linux") (eq .chezmoi.osRelease.id "rhel")) }}
+# linux redhat
+
+echo Installing a few RedHat diversions
+
+sudo dnf install -y figlet
+
+{{ else if (and (eq .chezmoi.os "linux") (eq .chezmoi.osRelease.id "ubuntu")) }}
+# linux ubuntu
+
+echo Installing some Ubuntu goodies
+export DEBIAN_FRONTEND=noninteractive
+# install optional packages here
+# sudo apt-get install -y figlet
+
+{{ else }}
+# other operating system
+
+echo
+echo "unknown operation system {{ .chezmoi.os }} {{ .chezmoi.osRelease.id }}"
+echo
+
+{{ end }}
