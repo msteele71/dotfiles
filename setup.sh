@@ -33,10 +33,9 @@ echo "Applying dotfiles with chezmoi"
 chezmoi apply
 
 # run scripts created from templates by chezmoi apply
-# template: dot_vworkstation/executable_init_root.sh.tmpl
 echo "Setting up root volume with user env"
 $HOME/.vworkstation/init_root.sh
-# template: dot_vworkstation/executable_init_home.sh.tmpl
+
 echo "Setting up home volume with user env"
 $HOME/.vworkstation/init_home.sh
 date
