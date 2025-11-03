@@ -1,9 +1,0 @@
-export WS_HOME=~/workspace
-
-export SPLUNK_HOME=$WS_HOME/splunk_home; mkdir -p $SPLUNK_HOME
-
-export SPLUNK_SOURCE=$WS_HOME/splunk_source; mkdir -p $SPLUNK_SOURCE
-
-export SPLUNK_BUILD=$WS_HOME/splunk_build; mkdir -p $SPLUNK_BUILD
-
-export SPLUNK_PACKAGE=$WS_HOME/splunk_package; mkdir -p $SPLUNK_PACKAGE

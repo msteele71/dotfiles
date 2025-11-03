@@ -2,12 +2,10 @@
 #  This will keep from writing Windows files on Linux and vice versa
 ##
 
-{{ if ne .chezmoi.os "linux" }}
+{{ if ne .chezmoi.os "linux" || if eq .chezmoi.os "darwin" }}
 **/*.sh
 .bashrc
 .config/*
-.splcore-build-vars
-.vworkstation
 .zlogin
 .zlogout
 .zprezto
@@ -15,6 +13,10 @@
 .zprofile
 .zshenv
 .zshrc
+{{ end }}
+
+{{ if eq .chezmoi.os "darwin" }}
+.vworkstation
 {{ end }}
 
 {{ if ne .chezmoi.os "windows" }}
