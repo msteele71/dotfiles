@@ -2,7 +2,7 @@
 #  This will keep from writing Windows files on Linux and vice versa
 ##
 
-{{ if ne .chezmoi.os "linux" || if eq .chezmoi.os "darwin" }}
+{{ if and (ne .chezmoi.os "linux") (ne .chezmoi.os "darwin") }}
 **/*.sh
 .bashrc
 .config/*
@@ -13,10 +13,6 @@
 .zprofile
 .zshenv
 .zshrc
-{{ end }}
-
-{{ if eq .chezmoi.os "darwin" }}
-.vworkstation
 {{ end }}
 
 {{ if ne .chezmoi.os "windows" }}

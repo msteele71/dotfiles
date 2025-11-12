@@ -1,10 +1,14 @@
+#!/bin/bash
 ##
 #  user customizations
 ##
 
+set -e
+
 # install a demo package
 
 {{ if eq .chezmoi.os "darwin" }}
+echo "nothing to install on darwin"
 # darwin
 
 {{ else if (and (eq .chezmoi.os "linux") (eq .chezmoi.osRelease.id "rhel")) }}
@@ -30,3 +34,5 @@ echo "unknown operation system {{ .chezmoi.os }} {{ .chezmoi.osRelease.id }}"
 echo
 
 {{ end }}
+
+echo "complete"
