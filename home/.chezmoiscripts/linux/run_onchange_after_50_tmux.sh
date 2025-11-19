@@ -3,7 +3,7 @@
 set -e
 
 # install tmux plugins
-XDG_CONFIG_HOME=${XDG_ZCONFIG_HOME:-$HOME/.config}
+XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
 
 TMUX_PLUGIN_DIR=$XDG_CONFIG_HOME/tmux/plugins
 
