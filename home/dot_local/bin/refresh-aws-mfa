@@ -1,0 +1,220 @@
+#!/usr/bin/env python3
+"""
+Simple AWS MFA Refresh Script
+
+Refreshes AWS credentials using MFA token from profile-meta.json
+"""
+
+import argparse
+import json
+import subprocess
+import configparser
+import sys
+import shutil
+from pathlib import Path
+
+# Check for available backends at import time
+_AWS_CLI = shutil.which("aws")
+
+try:
+    import boto3
+    from botocore.exceptions import ClientError, BotoCoreError
+    _BOTO3 = True
+except ImportError:
+    _BOTO3 = False
+
+if not _AWS_CLI and not _BOTO3:
+    print("Error: Neither the AWS CLI nor boto3 is available.")
+    print("  Install the AWS CLI: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html")
+    print("  Or install boto3:    pip install boto3")
+    sys.exit(1)
+
+if _AWS_CLI:
+    print(f"Backend: AWS CLI ({_AWS_CLI})")
+else:
+    print("Backend: boto3 (AWS CLI not found)")
+
+
+def load_profile_meta():
+    """Load profile metadata from JSON file."""
+    aws_dir = Path.home() / ".aws"
+    meta_file = aws_dir / "profile-meta.json"
+    
+    if not meta_file.exists():
+        print("Error: ~/.aws/profile-meta.json not found")
+        print("Run setup-profile-meta.py first to create profiles")
+        sys.exit(1)
+    
+    try:
+        with open(meta_file, 'r') as f:
+            return json.load(f)
+    except (json.JSONDecodeError, IOError) as e:
+        print(f"Error: Could not load profile metadata: {e}")
+        sys.exit(1)
+
+
+def get_profile_data(metadata, profile_name):
+    """Get profile data from metadata."""
+    if "profiles" not in metadata:
+        print("Error: Invalid profile-meta.json format")
+        sys.exit(1)
+    
+    if profile_name not in metadata["profiles"]:
+        print(f"Error: Profile '{profile_name}' not found in profile-meta.json")
+        available = list(metadata["profiles"].keys())
+        print(f"Available profiles: {', '.join(available)}")
+        sys.exit(1)
+    
+    return metadata["profiles"][profile_name]
+
+
+def update_credentials_file(profile_name, access_key_id, secret_access_key, session_token):
+    """Update AWS credentials file with new temporary credentials."""
+    aws_dir = Path.home() / ".aws"
+    aws_dir.mkdir(exist_ok=True)
+    aws_dir.chmod(0o700)
+    
+    credentials_file = aws_dir / "credentials"
+    
+    # Create backup if file exists
+    if credentials_file.exists():
+        backup_file = aws_dir / "credentials.bak"
+        backup_file.write_text(credentials_file.read_text())
+    
+    # Read existing config or create new one
+    config = configparser.ConfigParser()
+    if credentials_file.exists():
+        config.read(credentials_file)
+    
+    # Update profile
+    if profile_name not in config:
+        config.add_section(profile_name)
+    
+    config[profile_name]['aws_access_key_id'] = access_key_id
+    config[profile_name]['aws_secret_access_key'] = secret_access_key
+    config[profile_name]['aws_session_token'] = session_token
+    
+    # Write updated config
+    with open(credentials_file, 'w') as f:
+        config.write(f)
+    
+    # Set proper permissions
+    credentials_file.chmod(0o600)
+
+
+def _get_session_token_cli(access_key_id, secret_access_key, mfa_arn, mfa_code):
+    """Call STS via the AWS CLI subprocess."""
+    import os
+    env = os.environ.copy()
+    env['AWS_ACCESS_KEY_ID'] = access_key_id
+    env['AWS_SECRET_ACCESS_KEY'] = secret_access_key
+    env.pop('AWS_SESSION_TOKEN', None)
+
+    cmd = [_AWS_CLI, 'sts', 'get-session-token',
+           '--serial-number', mfa_arn,
+           '--token-code', mfa_code,
+           '--output', 'json']
+
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True, env=env)
+        credentials = json.loads(result.stdout)['Credentials']
+        return credentials['AccessKeyId'], credentials['SecretAccessKey'], credentials['SessionToken']
+    except subprocess.CalledProcessError as e:
+        print(f"Error: AWS CLI STS call failed:\n{e.stderr}")
+        sys.exit(1)
+    except (json.JSONDecodeError, KeyError) as e:
+        print(f"Error: Failed to parse AWS CLI response: {e}")
+        sys.exit(1)
+
+
+def _get_session_token_boto3(access_key_id, secret_access_key, mfa_arn, mfa_code):
+    """Call STS via boto3."""
+    try:
+        sts = boto3.client(
+            'sts',
+            aws_access_key_id=access_key_id,
+            aws_secret_access_key=secret_access_key,
+        )
+        response = sts.get_session_token(SerialNumber=mfa_arn, TokenCode=mfa_code)
+        credentials = response['Credentials']
+        return credentials['AccessKeyId'], credentials['SecretAccessKey'], credentials['SessionToken']
+    except ClientError as e:
+        print(f"Error: AWS STS call failed: {e.response['Error']['Message']}")
+        sys.exit(1)
+    except BotoCoreError as e:
+        print(f"Error: {e}")
+        sys.exit(1)
+
+
+def main():
+    """Main function."""
+    parser = argparse.ArgumentParser(description='Refresh AWS credentials using MFA')
+    parser.add_argument('--profile', default='default', help='AWS profile name (default: default)')
+    args = parser.parse_args()
+    
+    profile_name = args.profile
+    
+    print(f"Refreshing AWS credentials for profile: {profile_name}")
+    
+    # Load profile metadata
+    metadata = load_profile_meta()
+    profile_data = get_profile_data(metadata, profile_name)
+    
+    # Extract profile information
+    account_id = profile_data.get('account')
+    mfa_device = profile_data.get('mfa-device')
+    access_key_id = profile_data.get('access-key-id')
+    secret_access_key = profile_data.get('secret-access-key')
+    
+    if not all([account_id, mfa_device, access_key_id, secret_access_key]):
+        print("Error: Profile is missing required fields (account, mfa-device, access-key-id, secret-access-key)")
+        sys.exit(1)
+    
+    # Build MFA ARN
+    if mfa_device.startswith('arn:'):
+        mfa_arn = mfa_device
+    elif mfa_device.startswith('mfa/'):
+        mfa_arn = f"arn:aws:iam::{account_id}:{mfa_device}"
+    else:
+        mfa_arn = f"arn:aws:iam::{account_id}:mfa/{mfa_device}"
+    
+    print(f"Using MFA device: {mfa_device}")
+    
+    # Get MFA code from user
+    mfa_code = input("Enter MFA Code: ").strip()
+    
+    if not mfa_code:
+        print("Error: MFA code is required")
+        sys.exit(1)
+    
+    print("Getting session token...")
+
+    if _AWS_CLI:
+        temp_access_key, temp_secret_key, temp_session_token = _get_session_token_cli(
+            access_key_id, secret_access_key, mfa_arn, mfa_code
+        )
+    else:
+        temp_access_key, temp_secret_key, temp_session_token = _get_session_token_boto3(
+            access_key_id, secret_access_key, mfa_arn, mfa_code
+        )
+    
+    print(f"Retrieved temporary AWS Access Key ID: {temp_access_key}")
+    
+    # Update credentials file
+    update_credentials_file(profile_name, temp_access_key, temp_secret_key, temp_session_token)
+    
+    print("AWS credentials updated successfully!")
+    print(f"Temporary credentials are now active in the [{profile_name}] profile.")
+    
+    if profile_name == "default":
+        print("\nUse AWS CLI normally:")
+        print("  aws s3 ls")
+    else:
+        print(f"\nTo use this profile with AWS CLI:")
+        print(f"  aws --profile {profile_name} s3 ls")
+        print("Or set as default:")
+        print(f"  export AWS_PROFILE={profile_name}")
+
+
+if __name__ == "__main__":
+    main()

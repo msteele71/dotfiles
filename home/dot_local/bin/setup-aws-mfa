@@ -1,0 +1,133 @@
+#!/usr/bin/env python3
+
+"""
+Simple script to manage the AWS account MFA metdata
+so that the refresh script can create temporary credentials
+"""
+
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+
+
+def validate_access_key(access_key):
+    """Validate AWS access key format."""
+    return bool(re.match(r'^[A-Z0-9]{20}$', access_key))
+
+
+def validate_secret_key(secret_key):
+    """Validate AWS secret key format."""
+    return bool(re.match(r'^[A-Za-z0-9/+=]{40}$', secret_key))
+
+
+def validate_account_id(account_id):
+    """Validate AWS account ID format."""
+    return bool(re.match(r'^\d{12}$', account_id))
+
+
+def load_profile_meta():
+    """Load existing profile metadata or create empty structure."""
+    aws_dir = Path.home() / ".aws"
+    meta_file = aws_dir / "profile-meta.json"
+    
+    if meta_file.exists():
+        try:
+            with open(meta_file, 'r') as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            pass
+    
+    return {"profiles": {}}
+
+
+def save_profile_meta(metadata):
+    """Save profile metadata to JSON file."""
+    aws_dir = Path.home() / ".aws"
+    aws_dir.mkdir(exist_ok=True)
+    
+    # Set proper permissions on .aws directory
+    aws_dir.chmod(0o700)
+    
+    meta_file = aws_dir / "profile-meta.json"
+    
+    with open(meta_file, 'w') as f:
+        json.dump(metadata, f, indent=2)
+    
+    # Set proper permissions on the file
+    meta_file.chmod(0o600)
+
+
+def main():
+    print("AWS Profile Metadata Setup")
+    print("=" * 30)
+    print()
+    
+    # Get AWS credentials
+    print("Enter your AWS credentials:")
+    
+    account_id = input("AWS Account ID (12 digits): ").strip()
+    if not validate_account_id(account_id):
+        print("Error: Invalid account ID. Must be 12 digits.")
+        return
+    
+    access_key = input(f"Access Key ID ({account_id}): ").strip()
+    if not validate_access_key(access_key):
+        print("Error: Invalid access key format.")
+        return
+    
+    secret_key = input(f"Secret Access Key ({account_id}): ").strip()
+    if not validate_secret_key(secret_key):
+        print("Error: Invalid secret key format.")
+        return
+    
+    mfa_device = input("MFA Device name (e.g., 'mfa/john-doe': ").strip()
+    if not mfa_device:
+        print("Error: MFA device name is required.")
+        return
+    
+    # Ensure mfa_device has proper format
+    if not mfa_device.startswith('mfa/'):
+        mfa_device = f"mfa/{mfa_device}"
+    
+    print()
+
+    is_default = input("Is this the default profile? (y/N): ").strip().lower()
+    
+    if is_default in ['y', 'yes']:
+        profile_name = "default"
+    else:
+        profile_name = input("Profile name: ").strip()
+        if not profile_name:
+            print("Error: Profile name is required.")
+            return
+        
+        # Validate profile name
+        if not re.match(r'^[a-zA-Z0-9-]+$', profile_name):
+            print("Error: Profile name can only contain letters, numbers, and hyphens.")
+            return
+    
+    # Load existing metadata
+    metadata = load_profile_meta()
+    
+    # Add/update profile
+    metadata["profiles"][profile_name] = {
+        "account": account_id,
+        "mfa-device": mfa_device,
+        "access-key-id": access_key,
+        "secret-access-key": secret_key
+    }
+    
+    # Save metadata
+    save_profile_meta(metadata)
+    
+    print()
+    print(f"Profile '{profile_name}' saved successfully!")
+    print(f"MFA ARN: arn:aws:iam::{account_id}:{mfa_device}")
+    print(f"Metadata saved to: ~/.aws/profile-meta.json")
+    print()
+    print("Run ~/.local/bin/refresh-aws-mfa to set your AWS credentials")
+
+if __name__ == "__main__":
+    main()
