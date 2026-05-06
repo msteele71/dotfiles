@@ -308,28 +308,57 @@ vault-login() {
   _need_cmd jq
   _ensure_store "$VAULT_CREDS_FILE"
 
-  local role="${1:-devops-plus}"
+  local role="devops-plus"
+  local force=false
+  local skip_browser=false
+
+  # --- arg parsing ---
+  #   -f|--force         force re-login, ignore cache
+  #   -b|--skip-browser  use the manual-callback flow (for remote SSH sessions
+  #                      where Vault cannot open a local browser)
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -f|--force)
+        force=true
+        shift
+        ;;
+      -b|--skip-browser)
+        skip_browser=true
+        shift
+        ;;
+      *)
+        role="$1"
+        shift
+        ;;
+    esac
+  done
 
   # Try cache first
   local cached
-  echo "Checking cached Vault token for role: $role in $VAULT_CREDS_FILE"
-  if cached="$(_get_valid_cached_value "$VAULT_CREDS_FILE" "$role" "VAULT_TOKEN")"; then
-    rm -rf $VAULT_ENV_FILE
-    echo "export VAULT_TOKEN=\"${cached#*$'\t'}\"" > "$VAULT_ENV_FILE"
-    export VAULT_TOKEN="${cached#*$'\t'}"
-    echo "Using cached VAULT_TOKEN for role: $role"
-    return 0
+  if ! $force; then
+    echo "Checking cached Vault token for role: $role in $VAULT_CREDS_FILE"
+    if cached="$(_get_valid_cached_value "$VAULT_CREDS_FILE" "$role" "VAULT_TOKEN")"; then
+      rm -rf "$VAULT_ENV_FILE"
+      echo "export VAULT_TOKEN=\"${cached#*$'\t'}\"" > "$VAULT_ENV_FILE"
+      export VAULT_TOKEN="${cached#*$'\t'}"
+      echo "Using cached VAULT_TOKEN for role: $role"
+      return 0
+    fi
+  else
+    echo "Forcing Vault login (skipping cache) for role: $role"
   fi
 
   echo "Creating Vault access for role: $role"
 
-  # Use JSON output so we can safely parse token + ttl
   local login_json token ttl now
-  if ! login_json="$(vault login -method=oidc role="$role" -format=json 2>/dev/null)"; then
-    # fall back with stderr for visibility
-    echo "Vault login failed" >&2
-    vault login -method=oidc role="$role" 1>/dev/null
-    return 1
+  if $skip_browser; then
+    login_json="$(_vault_oidc_manual_callback "$role")" || return 1
+  else
+    if ! login_json="$(vault login -method=oidc role="$role" -format=json 2>/dev/null)"; then
+      echo "Vault login failed" >&2
+      vault login -method=oidc role="$role" 1>/dev/null
+      return 1
+    fi
   fi
 
   token="$(jq -r '.auth.client_token // empty' <<<"$login_json")"
@@ -341,12 +370,95 @@ vault-login() {
     return 1
   fi
 
-  rm -rf $VAULT_ENV_FILE
+  rm -rf "$VAULT_ENV_FILE"
   echo "export VAULT_TOKEN=\"${token}\"" > "$VAULT_ENV_FILE"
   export VAULT_TOKEN="${token}"
   _put_role_entry "$VAULT_CREDS_FILE" "$role" "VAULT_TOKEN" "$token" "$now" "$ttl"
 
   echo "VAULT_TOKEN set successfully for role: $role"
+}
+
+# Background-vault + paste-callback OIDC flow for SSH sessions where Vault
+# cannot open a browser. The CLI listener stays bound to localhost:8250 on
+# THIS host; the user's local browser cannot reach it, so we relay the
+# callback URL via curl on this host instead of via SSH port forwarding.
+# Writes the vault JSON token blob to stdout on success.
+_vault_oidc_manual_callback() {
+  _need_cmd curl
+  local role="$1"
+  local out_file err_file vault_pid auth_url callback_url waited
+
+  out_file="$(mktemp)" || return 1
+  err_file="$(mktemp)" || { rm -f "$out_file"; return 1; }
+
+  # Clean up the background vault and temp files on Ctrl-C, error, or normal return
+  trap '[ -n "${vault_pid:-}" ] && kill "$vault_pid" 2>/dev/null; rm -f "$out_file" "$err_file"; trap - INT TERM RETURN' INT TERM RETURN
+
+  vault login -method=oidc -format=json role="$role" skip_browser=true \
+      >"$out_file" 2>"$err_file" &
+  vault_pid=$!
+
+  # Vault prints the Keycloak auth URL on stderr almost immediately
+  waited=0
+  while ! grep -qE 'https?://' "$err_file" 2>/dev/null; do
+    if ! kill -0 "$vault_pid" 2>/dev/null; then
+      echo "vault login exited before printing the auth URL:" >&2
+      cat "$err_file" >&2
+      return 1
+    fi
+    sleep 0.1
+    waited=$((waited + 1))
+    if [ "$waited" -gt 100 ]; then
+      echo "Timed out (10s) waiting for Vault to print the auth URL" >&2
+      kill "$vault_pid" 2>/dev/null
+      return 1
+    fi
+  done
+
+  auth_url="$(grep -oE 'https?://[^[:space:]]+' "$err_file" | head -1)"
+
+  cat >&2 <<EOF
+
+────────────────────────────────────────────────────────────────────────
+Vault OIDC login (manual callback relay — no SSH port forward needed).
+
+1. Open this URL in your LOCAL browser:
+
+   $auth_url
+
+2. Authenticate via Keycloak.
+
+3. Your browser will redirect to http://localhost:8250/oidc/callback?...
+   That tab will fail to load (expected — the listener is on this host,
+   not your laptop). Copy the FULL URL from your browser's address bar
+   and paste it below.
+
+   The OIDC code is short-lived (~60s), so paste promptly.
+────────────────────────────────────────────────────────────────────────
+
+EOF
+
+  IFS= read -r -p "Callback URL: " callback_url
+  if [ -z "$callback_url" ]; then
+    echo "No callback URL provided; aborting" >&2
+    kill "$vault_pid" 2>/dev/null
+    return 1
+  fi
+
+  if ! curl -sf "$callback_url" > /dev/null; then
+    echo "Failed to deliver callback to localhost:8250 (URL may have expired or been malformed)" >&2
+    kill "$vault_pid" 2>/dev/null
+    return 1
+  fi
+
+  # Vault now exchanges the code with Keycloak, prints JSON to out_file, exits
+  if ! wait "$vault_pid"; then
+    echo "vault login failed:" >&2
+    cat "$err_file" >&2
+    return 1
+  fi
+
+  cat "$out_file"
 }
 
 nomad-login() {
